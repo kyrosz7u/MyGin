@@ -1,6 +1,7 @@
 package gee
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -11,30 +12,52 @@ import (
 type Context struct {
 	resp   http.ResponseWriter
 	req    *http.Request
-	path   string
-	method string
+	Path   string
+	Method string
 	// response info
-	statusCode int
+	StatusCode int
 }
 
-func New(w http.ResponseWriter, r *http.Request) *Context {
+func newContext(w http.ResponseWriter, r *http.Request) *Context {
 	return &Context{
 		resp:   w,
 		req:    r,
-		path:   r.URL.Path,
-		method: r.Method}
+		Path:   r.URL.Path,
+		Method: r.Method}
 }
 
-func (c *Context) Status(int code) {
-
+func (c *Context) PostForm(key string) string {
+	return c.req.FormValue(key)
 }
 
-func (c *Context) Handle() {
+// 查询URL中的参数
+func (c *Context) Query(key string) string {
+	return c.req.URL.Query().Get(key)
+}
 
+//http.ResponseWriter.StatusCode的作用是设置响应的状态码
+func (c *Context) Status(code int) {
+	c.StatusCode = code
+	c.resp.WriteHeader(code)
+}
+
+//SetHeader: 设置响应报文的头部字段
+//key: header
+func (c *Context) SetHeader(key, value string) {
+	c.resp.Header().Set(key, value)
 }
 
 func (c *Context) String(code int, format string, values ...interface{}) {
 	c.SetHeader("Content-Type", "text/plain")
 	c.Status(code)
-	c.Writer.Write([]byte(fmt.Sprintf(format, values...)))
+	c.resp.Write([]byte(fmt.Sprintf(format, values...)))
+}
+
+func (c *Context) JSON(code int, obj interface{}) {
+	c.SetHeader("Content-Type", "application/json")
+	c.Status(code)
+	encoder := json.NewEncoder(c.resp)
+	if err := encoder.Encode(obj); err != nil {
+		http.Error(c.resp, err.Error(), 500)
+	}
 }
