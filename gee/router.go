@@ -43,7 +43,7 @@ func (r *Router) getRoute(method string, path string) (*node, map[string]string)
 		parts := parsePath(n.pattern)
 		for index, part := range parts {
 			if part[0] == ':' {
-				params[part[1:]] = searchParts[index][1:]
+				params[part[1:]] = searchParts[index]
 			}
 			if part[0] == '*' && len(part) > 1 {
 				params[part[1:]] = strings.Join(searchParts[index:], "/")
@@ -59,13 +59,20 @@ func (r *Router) getRoute(method string, path string) (*node, map[string]string)
 func (r *Router) handle(ctx *Context) {
 	node, paras := r.getRoute(ctx.Method, ctx.Path)
 
+	//将路由处理添加到ctx的中间件函数列表中去，
+	//虽然位置在列表中的最后一个，但执行过程中可以调用ctx.Next()实现灵活切换
 	if node == nil {
-		ctx.String(http.StatusNotFound, "404 Not Found:%s", ctx.Path)
+		ctx.midHandlers = append(ctx.midHandlers, func(context *Context) {
+			ctx.String(http.StatusNotFound, "404 Not Found:%s", ctx.Path)
+		})
 	} else {
 		key := ctx.Method + "+" + node.pattern
 		ctx.Paras = paras
-		r.handleMap[key](ctx)
+		routeHandler := r.handleMap[key]
+		ctx.midHandlers = append(ctx.midHandlers, routeHandler)
 	}
+
+	ctx.Next()
 }
 
 func (r *Router) PrintRouters(method string) []*node {

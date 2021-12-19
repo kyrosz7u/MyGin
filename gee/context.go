@@ -15,16 +15,20 @@ type Context struct {
 	Path   string
 	Method string
 	// response info
-	StatusCode int
-	Paras      map[string]string
+	StatusCode  int
+	Paras       map[string]string
+	midHandlers []HandlerFunc //中间件
+	midIndex    int
 }
 
-func newContext(w http.ResponseWriter, r *http.Request) *Context {
+func newContext(w http.ResponseWriter, r *http.Request, midWare []HandlerFunc) *Context {
 	return &Context{
-		resp:   w,
-		req:    r,
-		Path:   r.URL.Path,
-		Method: r.Method}
+		resp:        w,
+		req:         r,
+		Path:        r.URL.Path,
+		Method:      r.Method,
+		midHandlers: midWare,
+		midIndex:    -1}
 }
 
 func (c *Context) PostForm(key string) string {
@@ -46,6 +50,15 @@ func (c *Context) Status(code int) {
 //key: header
 func (c *Context) SetHeader(key, value string) {
 	c.resp.Header().Set(key, value)
+}
+
+//提供切换中间件的支持
+func (c *Context) Next() {
+	c.midIndex++
+	for c.midIndex < len(c.midHandlers) {
+		c.midHandlers[c.midIndex](c)
+		c.midIndex++
+	}
 }
 
 func (c *Context) String(code int, format string, values ...interface{}) {
