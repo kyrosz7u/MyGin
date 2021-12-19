@@ -11,6 +11,9 @@ type node struct {
 
 // 第一个匹配成功的节点，用于插入
 func (n *node) matchChild(part string) *node {
+	if n == nil {
+		return nil
+	}
 	for _, child := range n.children {
 		if child.part == part || child.isWild {
 			return child
@@ -19,7 +22,7 @@ func (n *node) matchChild(part string) *node {
 	return nil
 }
 
-// 所有匹配成功的节点，用于查找
+// 所有匹配成功的节点，用于查找（如果没有精确的匹配，也可以匹配child.isWild=1的那些）
 func (n *node) matchChildren(part string) []*node {
 	nodes := make([]*node, 0)
 	for _, child := range n.children {
@@ -31,18 +34,20 @@ func (n *node) matchChildren(part string) []*node {
 }
 
 func (n *node) insert(pattern string, parts []string, height int) {
-	if len(parts) == height {
-		n.pattern = pattern
-		return
+	nod := n
+	for height < len(parts) {
+		var child *node
+		part := parts[height]
+		child = nod.matchChild(part)
+		if child == nil {
+			//建立child节点
+			child = &node{part: part, children: make([]*node, 0), isWild: part[0] == ':' || part[0] == '*'}
+			nod.children = append(nod.children, child)
+		}
+		nod = child
+		height++
 	}
-
-	part := parts[height]
-	child := n.matchChild(part)
-	if child == nil {
-		child = &node{part: part, isWild: part[0] == ':' || part[0] == '*'}
-		n.children = append(n.children, child)
-	}
-	child.insert(pattern, parts, height+1)
+	nod.pattern = pattern
 }
 
 func (n *node) search(parts []string, height int) *node {
@@ -64,4 +69,17 @@ func (n *node) search(parts []string, height int) *node {
 	}
 
 	return nil
+}
+
+//遍历路由树，返回所有节点
+func (n *node) travel(res *([]*node)) {
+	if n == nil {
+		return
+	}
+	if n.pattern != "" {
+		*res = append(*res, n)
+	}
+	for _, child := range n.children {
+		child.travel(res)
+	}
 }

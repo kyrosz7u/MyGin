@@ -16,6 +16,7 @@ type Context struct {
 	Method string
 	// response info
 	StatusCode int
+	Paras      map[string]string
 }
 
 func newContext(w http.ResponseWriter, r *http.Request) *Context {

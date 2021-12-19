@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"gee"
 	"net/http"
 )
@@ -16,6 +17,12 @@ func main() {
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"username": c.PostForm("username"),
 			"password": c.PostForm("password"),
+		})
+	})
+	engine.GET("/:lang", func(c *gee.Context) {
+		fmt.Println(c.PostForm(c.Paras["lang"]))
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"lang:": c.Paras["lang"],
 		})
 	})
 	engine.Run(":9000")
